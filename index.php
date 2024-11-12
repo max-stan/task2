@@ -7,22 +7,42 @@ if ($mysqli->connect_errno) {
 }
 
 $stmt = $mysqli->query('SELECT * FROM categories');
-$items = $stmt->fetch_all(MYSQLI_ASSOC);
+$categories = $stmt->fetch_all(MYSQLI_ASSOC);
 
-function buildTree(array $elements, $parentId = "0") {
-    $branch = [];
+$items = [];
+$tree = [];
 
-    foreach ($elements as $element) {
-        if ($element['parent_id'] === $parentId) {
-            $children = buildTree($elements, $element['categories_id']);
-            $branch[$element['categories_id']] = $children ? $children : $element['categories_id'];
-        }
-    }
-
-    return $branch;
+foreach ($categories as $category) {
+    $category['children'] = [];
+    $items[$category['categories_id']] = $category;
 }
 
-$tree = buildTree($items);
+foreach ($items as $id => &$item) {
+    if ($item['parent_id'] == 0) {
+        $tree[0][] = &$item;
+    } else {
+        $items[$item['parent_id']]['children'][] = &$item;
+    }
+}
+
+function formatTree($node) {
+    if (empty($node['children'])) {
+        return $node['categories_id'];
+    }
+
+    $result = [];
+    foreach ($node['children'] as $child) {
+        $result[$child['categories_id']] = formatTree($child);
+    }
+    return $result;
+}
+
+$formattedTree = [];
+foreach ($tree as $parent_id => $nodes) {
+    foreach ($nodes as $node) {
+        $formattedTree[$parent_id][$node['categories_id']] = formatTree($node);
+    }
+}
 
 echo "Структура дерева :\n";
-print_r($tree);
+print_r($formattedTree[0]);
